@@ -22,22 +22,30 @@ testing or stuff.
 //  \__> |___ \__/ |__) /~~\ |___     \/  /~~\ |  \ | /~~\ |__) |___ |___ .__/
 //
 
-float kP_drive = 0.08;
-float kP_drift = 0;
-float kD = 0;
+float kP_drive = 0.8;
+float kP_drift = 2;
+float kD = 0.085;
 float kI = 0;
 
 float headingAngle = 0;
-
-//Datalog variables
-float error;
-float power;
 
 //Conversions
 float inches_per_tile = 24.25;
 float ticks_per_revolution = 392; //FIX This is for the high speed configuration only
 float ticks_per_inch = ticks_per_revolution/(PI*4); //FIX 4" omni wheels
 float ticks_per_tile = ticks_per_inch*inches_per_tile;
+
+//moveStraight variables
+float error;
+float power;
+float driftPower;
+float targetTicks;
+float prevError;
+float gyroError;
+float derivative;
+float integral = 0;
+float integral_active_zone = 4*ticks_per_inch; //FIX idk man arbitrary
+float errorThreshold = 30; //errorThresholdInTicks=(ticks_per_inch)*(errorThresholdInInches) arbitrary
 
 #pragma platform(VEX2)
 #pragma competitionControl(Competition)
@@ -83,6 +91,9 @@ task datalog(){
 		datalogAddValue( 0, error);
 		datalogAddValue( 1, power);
 		datalogAddValue( 2, SensorValue[gyro]);
+		datalogAddValue( 3, integral);
+		datalogAddValue( 4, motor[LEDrive]);
+		datalogAddValue( 5, motor[REDrive]);
 		datalogDataGroupEnd();
 		wait1Msec(25);
 	}
@@ -95,14 +106,8 @@ task datalog(){
 //
 
 void moveStraight(int direction, float tiles){
-	float driftPower;
-	float targetTicks = tiles*ticks_per_tile;
-	float prevError = targetTicks, gyroError;
-	float derivative;
-	float integral = 0;
-	float integral_active_zone = 3*ticks_per_inch; //FIX idk man arbitrary
-	int errorThreshold = 30; //errorThresholdInTicks=(ticks_per_inch)*(errorThresholdInInches) arbitrary
-
+	targetTicks = tiles*ticks_per_tile;
+	prevError = targetTicks;
 	nMotorEncoder[LEDrive]=0;
 	nMotorEncoder[REDrive]=0;
 	error = targetTicks-((abs(nMotorEncoder[LEDrive])+abs(nMotorEncoder[REDrive]))/2);
@@ -119,10 +124,14 @@ void moveStraight(int direction, float tiles){
 		derivative = error - prevError;
 
 		driftPower = gyroError * kP_drift;
-		power = direction*((kP_drive*error)+(kD*derivative)+(kI*integral));
+		power = (kP_drive*error)+(kD*derivative)+(kI*integral);
 
-		motor[LEDrive] = power-driftPower; //FIX this assumes clockwise drift is positive
-		motor[REDrive] = power+driftPower;
+		if(power>120){
+			power = 120;
+		}
+
+		motor[LEDrive] = (direction*power)+driftPower; //FIX this assumes clockwise drift is negative
+		motor[REDrive] = (direction*power)-driftPower;
 		wait1Msec(25);
 	}
 
@@ -140,7 +149,7 @@ void moveStraight(int direction, float tiles){
 task autonomous()
 {
 	startTask(datalog);
-	moveStraight(1,2);
+	moveStraight(1,1);
 	wait1Msec(100);
 	stopTask(datalog);
 }
@@ -155,6 +164,8 @@ task autonomous()
 task usercontrol()
 {
 	int driveThreshold = 20;
+	slaveMotor(LDrive,LEDrive);
+	slaveMotor(RDrive,REDrive);
 	while (true)
 	{
 		while(1){
