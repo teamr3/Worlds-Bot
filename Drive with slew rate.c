@@ -84,7 +84,7 @@ void pre_auton()
 //    __       ___          __      ___  ___
 //   /__` |   |__  |  |    |__)  /\  |  |__
 //   .__/ |__ |___ |/\|    |  \ /~~\ |  |___
-//         
+//
 
 int motorSlewRate = 5; //20
 float tempMotor = 0;
@@ -109,7 +109,7 @@ task slewRate(){
 						tempMotor = motorReq;
 					}
 				}
-				motor[motorIndex] = tempMotor;		
+				motor[motorIndex] = tempMotor;
 			}
 		}
 		wait1Msec(15);
