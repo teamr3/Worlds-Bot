@@ -89,29 +89,38 @@ void pre_auton()
 int motorSlewRate = 5; //20
 float tempMotor = 0;
 float motorReq = 0;
-int motorIndex; //REDrive is index 7, LEDrive is index 8
 
-task slewRate(){
-	while (1){
-		for (motorIndex = 7; motorIndex < 9; motorIndex++){
-			tempMotor = motor[motorIndex];
 
-			if (tempMotor != motorReq){
-				if (tempMotor < motorReq){
-					tempMotor = tempMotor +	motorSlewRate;
-					if (tempMotor > motorReq){
-						tempMotor = motorReq;
-					}
-				}
-				else {
-					tempMotor = tempMotor -	motorSlewRate;
-					if (tempMotor < motorReq){
-						tempMotor = motorReq;
-					}
-				}
-				motor[motorIndex] = tempMotor;
+void assignPower (int motorIndex){ //REDrive is index 6, LEDrive is index 1
+	tempMotor = motor[motorIndex];
+	if (tempMotor != motorReq)
+	{
+		if (tempMotor < motorReq)
+		{
+			tempMotor = tempMotor +	motorSlewRate;
+			if (tempMotor > motorReq)
+			{
+				tempMotor = motorReq;
 			}
 		}
+		else
+		{
+			tempMotor = tempMotor -	motorSlewRate;
+			if (tempMotor < motorReq)
+			{
+				tempMotor = motorReq;
+			}
+		}
+		motor[motorIndex] = tempMotor;
+	}
+}
+
+task slewRate()
+{
+	while (1)
+	{
+		assignPower(6); //REDrive is index 6
+		assignPower(1); //LEDrive is index 1
 		wait1Msec(15);
 	}
 }
