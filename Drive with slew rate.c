@@ -33,12 +33,11 @@ float kP_drive = 2; //0.8, 0.65, 0.7,0.75, 0.78, 0.93, 0.95, 5, 1.45, 1.06, 0.27
 float kP_drift = 0; //2,3
 float kD = 15.7; //0.085, 0.085,0.07, 0.065, 0.06,0.057,0.052, 0.052, 0.05, 0.324, 0.03348,0.3575, 0.02, 1.5
 float kI = 0.32; //0, 0.1, 0.2, 0.1, 0.03, 5
-float toMotor = 0;
 float powerP = 0;
 float powerI = 0;
 float powerD = 0;
 
-float headingAngle = 0;
+float Header = 0;
 
 //Conversions
 float inches_per_tile = 24; //23.25
@@ -72,11 +71,11 @@ float errorThreshold = 5; //errorThresholdInTicks=(ticks_per_inch)*(errorThresho
 void pre_auton()
 {
 	slaveMotor(R_lift, L_lift);
-	//SensorType[gyro] = sensorNone;
-	//wait1Msec(1000);
-	//SensorType[gyro] = sensorGyro;
-	//wait1Msec(2000);
-	//SensorValue[gyro] = 0;
+	SensorType[gyro] = sensorNone;
+	wait1Msec(1000);
+	SensorType[gyro] = sensorGyro;
+	wait1Msec(2000);
+	SensorValue[gyro] = 0;
 }
 
 
@@ -122,7 +121,7 @@ task slewRate()
 	{
 		assignPower(6); //REDrive is index 6
 		assignPower(1); //LEDrive is index 1
-		wait1Msec(15);
+		wait1Msec(20);
 	}
 }
 
@@ -135,11 +134,12 @@ task datalog(){
 	while(1){
 		datalogDataGroupStart();
 		datalogAddValue( 0, error);
-		datalogAddValue( 1, toMotor);
+		datalogAddValue( 1, motorReq);
 		datalogAddValue( 2, powerP);
 		datalogAddValue( 3, powerI);
 		datalogAddValue( 4, powerD);
 		datalogAddValue( 5, tempMotor);
+		datalogAddValue( 6, SensorValue[gyro]);
 		datalogDataGroupEnd();
 		wait1Msec(25);
 	}
@@ -162,12 +162,12 @@ void moveStraight(int direction, float tiles){
 	nMotorEncoder[LEDrive]=0;
 	nMotorEncoder[REDrive]=0;
 	error = targetTicks-((abs(nMotorEncoder[LEDrive])+abs(nMotorEncoder[REDrive]))/2);
-	headingAngle = SensorValue[gyro]/10;
+	Header = SensorValue[gyro]/10;
 	float scaling = 127/targetTicks;
 	clearTimer(T1);
 	while((time1[T1]<2000)){ // && (error>errorThreshold)1500
 		error = targetTicks-((abs(nMotorEncoder[LEDrive])+abs(nMotorEncoder[REDrive]))/2);
-		gyroError = (SensorValue[gyro]/10)-headingAngle; //Error in degrees
+		gyroError = SensorValue[gyro]-Header; //Error in degrees
 
 		integral = integral + error;
 		if(abs(error)>integral_active_zone){
@@ -185,13 +185,11 @@ void moveStraight(int direction, float tiles){
 		powerD = kD*derivative*direction*scaling;
 		power = (powerP)+(powerI)+(powerD);
 
-		toMotor = power;
-		motorReq = toMotor;
+		motorReq = power;
 		prevError = error;
 		wait1Msec(25);
 	}
-	toMotor = 0;
-	motorReq = toMotor;
+	motorReq = 0;
 }
 
 
@@ -205,9 +203,9 @@ task autonomous()
 {
 	startTask(slewRate);
 	startTask(datalog);
-	moveStraight(1,1);
+	moveStraight(1,1.5);
 	wait1Msec(500);
-	moveStraight(-1,1);
+	moveStraight(-1,1.5);
 	wait1Msec(500);
 	stopTask(slewRate);
 	stopTask(datalog);
