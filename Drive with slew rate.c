@@ -217,52 +217,21 @@ task autonomous()
 
 task usercontrol()
 {
-	slaveMotor(R_lift, L_lift);
 	int driveThreshold = 20;
-	while (true)
-	{
-		while(1){
-			if(abs(vexRT[Ch3])>driveThreshold){
-				motor[LEDrive]=vexRT[Ch3];
-				}	else {
-				motor[LEDrive]=0;
-			}
-			if(abs(vexRT[Ch2])>driveThreshold){
-				motor[REDrive]=vexRT[Ch2];
-				}	else {
-				motor[REDrive]=0;
-			}
-
-			if(vexRT[Btn7U]==1){
-				motor[clawArm]=127;
-			}
-			else if(vexRT[Btn7D]==1){
-				motor[clawArm]=-127;
-			}
-			else {
-				motor[clawArm]=0;
-			}
-
-			if(vexRT[Btn5U]==1){
-				motor[fork]=127;
-			}
-			else if(vexRT[Btn5D]==1){
-				motor[fork]=-127;
-			}
-			else {
-				motor[fork]=0;
-			}
-
-			if(vexRT[Btn6U]==1){
-				motor[L_lift]=127;
-			}
-			else if(vexRT[Btn6D]==1){
-				motor[L_lift]=-127;
-			}
-			else {
-				motor[L_lift]=0;
-			}
-
+	while (true){
+		if(abs(vexRT[Ch3])>driveThreshold){
+			motor[LEDrive] = vexRT[Ch3];
+		}	else {
+			motor[LEDrive] = 0;
 		}
+		if(abs(vexRT[Ch2])>driveThreshold){
+			motor[REDrive] = vexRT[Ch2];
+		}	else {
+			motor[REDrive] = 0;
+		}
+		motor[clawArm] = (vexRT[Btn6UXmtr2]-vexRT[Btn5UXmtr2])*127;
+		motor[claw] = vexRT[Btn7DXmtr2]*127;
+		motor[fork] = (vexRT[Btn6U]-vexRT[Btn6D])*127;
+		motor[L_lift] = (vexRT[Btn8RXmtr2]-vexRT[Btn8DXmtr2])*127;
 	}
 }
