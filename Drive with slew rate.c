@@ -29,16 +29,17 @@ testing or stuff.
 //  \__> |___ \__/ |__) /~~\ |___     \/  /~~\ |  \ | /~~\ |__) |___ |___ .__/
 //
 
-float kP_drive = 2; //0.8, 0.65, 0.7,0.75, 0.78, 0.93, 0.95, 5, 1.45, 1.06, 0.27, 0.2, 2, 1.6
-float kP_drift = 0; //2,3
-float kD = 15.6; //0.085, 0.085,0.07, 0.065, 0.06,0.057,0.052, 0.052, 0.05, 0.324, 0.03348,0.3575, 0.02, 15.7
-float kI = 0.36; //0, 0.1, 0.2, 0.1, 0.03, 5, 0.32, 0.14, 0.6
+float kP_drive = 2; //2
+float kP_drift = 10; //10
+float kD = 16; //15.6
+float kI = 0.36; //0.36
 float toMotor = 0;
 float powerP = 0;
 float powerI = 0;
 float powerD = 0;
 
 float headingAngle = 0;
+int setTime = 0;
 
 //Conversions
 float inches_per_tile = 24; //23.25, 22.25
@@ -77,6 +78,7 @@ void pre_auton()
 	SensorType[gyro] = sensorGyro;
 	wait1Msec(2000);
 	SensorValue[gyro] = 0;
+	headingAngle = SensorValue[gyro]/10;
 }
 
 
@@ -88,27 +90,27 @@ void pre_auton()
 
 int motorSlewRate = 5; //20
 float tempMotor = 0;
-float motorReq = 0;
+float motorReq[2];
 
 
-void assignPower (int motorIndex){ //REDrive is index 6, LEDrive is index 1
+void assignPower (int motorIndex, int motorReq_Index){ //REDrive is index 6, LEDrive is index 1
 	tempMotor = motor[motorIndex];
-	if (tempMotor != motorReq)
+	if (tempMotor != motorReq[motorReq_Index])
 	{
-		if (tempMotor < motorReq)
+		if (tempMotor < motorReq[motorReq_Index])
 		{
 			tempMotor = tempMotor +	motorSlewRate;
-			if (tempMotor > motorReq)
+			if (tempMotor > motorReq[motorReq_Index])
 			{
-				tempMotor = motorReq;
+				tempMotor = motorReq[motorReq_Index];
 			}
 		}
 		else
 		{
 			tempMotor = tempMotor -	motorSlewRate;
-			if (tempMotor < motorReq)
+			if (tempMotor < motorReq[motorReq_Index])
 			{
-				tempMotor = motorReq;
+				tempMotor = motorReq[motorReq_Index];
 			}
 		}
 
@@ -120,8 +122,8 @@ task slewRate()
 {
 	while (1)
 	{
-		assignPower(6); //REDrive is index 6
-		assignPower(1); //LEDrive is index 1
+		assignPower(6, 1); //REDrive is index 6
+		assignPower(1, 0); //LEDrive is index 1
 		wait1Msec(15);
 	}
 }
@@ -132,17 +134,44 @@ task slewRate()
 //   |  | \__/  \/  |___    .__/  |  |  \ /~~\ | \__> |  |  |
 //
 
+//if robot is not straight by the end of loop, it will become the new heanding angle
+//gyro did not take into account when the sensor value overflow
 void moveStraight(int direction, float tiles){
 	targetTicks = tiles*ticks_per_tile;
+
+	if (tiles == 1){
+		setTime = 2000;
+		kP_drive = 2;
+		kD = 15.7;
+		kI = 0.36; //0.36
+		if (direction == 1 || direction == 2){
+			targetTicks = tiles*(ticks_per_tile - 65);
+		}
+		if (direction == -1){
+			targetTicks = tiles*(ticks_per_tile - 85;
+		}
+	}
+
+	if (tiles == 2){
+		setTime = 3000;
+		kP_drive = 2; //2
+		kD = 15.7; //16
+		kI = 0.36; //0.8
+		if (direction == 1){
+			targetTicks = tiles*(ticks_per_tile - 65); //50
+		}
+		if (direction == -1){
+			targetTicks = tiles*(ticks_per_tile - 85); //45
+		}
+	}
 	prevError = targetTicks;
 	nMotorEncoder[LEDrive]=0;
 	nMotorEncoder[REDrive]=0;
 	error = targetTicks-((abs(nMotorEncoder[LEDrive])+abs(nMotorEncoder[REDrive]))/2);
-	headingAngle = SensorValue[gyro]/10;
 	float scaling = 127/targetTicks;
 	integral = 0;
 	clearTimer(T1);
-	while((time1[T1]<2000)){ // && (error>errorThreshold)1500
+	while((time1[T1]<setTime)){ // && (error>errorThreshold)1500
 		error = targetTicks-((abs(nMotorEncoder[LEDrive])+abs(nMotorEncoder[REDrive]))/2);
 		gyroError = (SensorValue[gyro]/10)-headingAngle; //Error in degrees
 
@@ -162,13 +191,33 @@ void moveStraight(int direction, float tiles){
 		powerD = kD*derivative*direction*scaling;
 		power = (powerP)+(powerI)+(powerD);
 
+		if (power > 97){
+			power = 97;
+		}
+		else if (power < -97){
+			power = -97;
+		}
+
+		if (driftPower > 30){
+			driftPower = 30;
+		}
+		else if (driftPower < -30){
+			driftPower = -30;
+		}
+
+		if(abs(error)<30){
+			driftPower = 0;
+		}
+
 		toMotor = power;
-		motorReq = toMotor;
+		motorReq[0] = toMotor + driftPower; //left
+		motorReq[1] = toMotor - driftPower; //right
 		prevError = error;
 		wait1Msec(25);
 	}
 	toMotor = 0;
-	motorReq = toMotor;
+	motorReq[0] = toMotor;
+	motorReq[1] = toMotor;
 }
 
 
@@ -181,11 +230,13 @@ task datalog(){
 	while(1){
 		datalogDataGroupStart();
 		datalogAddValue( 0, error);
-		datalogAddValue( 1, toMotor);
-		datalogAddValue( 2, powerP);
-		datalogAddValue( 3, powerI);
-		datalogAddValue( 4, powerD);
-		datalogAddValue( 5, tempMotor);
+		datalogAddValue( 1, gyroError);
+		datalogAddValue( 2, driftPower);
+		datalogAddValue( 3, toMotor);
+		datalogAddValue( 4, powerP);
+		datalogAddValue( 5, powerI);
+		datalogAddValue( 6, powerD);
+		datalogAddValue( 7, tempMotor);
 		datalogDataGroupEnd();
 		wait1Msec(25);
 	}
@@ -200,6 +251,18 @@ task autonomous()
 {
 	startTask(slewRate);
 	startTask(datalog);
+	moveStraight(1,1);
+	wait1Msec(500);
+	moveStraight(1,1);
+	wait1Msec(500);
+	moveStraight(-1,1);
+	wait1Msec(500);
+	moveStraight(-1,1);
+	wait1Msec(500);
+	moveStraight(1,2);
+	wait1Msec(500);
+	moveStraight(-1,2);
+	wait1Msec(500);
 	moveStraight(1,1);
 	wait1Msec(500);
 	moveStraight(-1,1);
