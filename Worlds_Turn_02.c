@@ -40,11 +40,11 @@ task datalog(){
 }
 const float gyro_ratio=(955.0/900.0); // real world gyro value tune ratio
 const float kPt = 0.1; // P tune for turning
-const float kDt = 0.001; // D tune for turning
-const float kIt = 0.001; // I tune for turning
+const float kDt = 0.08; // D tune for turning
+const float kIt = 0.012; // I tune for turning
 float Header = 0; // align header with gyro
-const float max_turn_spd = 90;
-const float max_int = 1000;
+const float max_turn_spd = 85;
+const float max_int = 4000;
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -101,9 +101,12 @@ task autonomous()
 {
 	startTask(datalog);
 	Header = 0;
-	turn(900,1000); // align with Header, positive degrees = counterclockwise
+	turn(900,3000); // align with Header, positive degrees = counterclockwise
 	wait1Msec(1000);
-	turn(0,2000);
+	turn(0,3000);
+	wait1Msec(1000);
+	turn(900,3000);
+	turn(1800,3000);
 }
 
 void turn (float target, float time_turn)
