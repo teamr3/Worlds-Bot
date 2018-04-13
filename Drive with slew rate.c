@@ -56,7 +56,7 @@ float prevError;
 float gyroError;
 float derivative;
 float integral = 0;
-float integral_active_zone = 40; //FIX idk man arbitrary, 130
+float integral_active_zone = 45; //FIX idk man arbitrary, 130, 40
 float errorThreshold = 2; //errorThresholdInTicks=(ticks_per_inch)*(errorThresholdInInches) arbitrary
 
 #pragma platform(VEX2)
@@ -129,39 +129,39 @@ task slewRate()
 }
 
 
-//         __        ___     __  ___  __          __       ___
-//   |\/| /  \ \  / |__     /__`  |  |__)  /\  | / _` |__|  |
-//   |  | \__/  \/  |___    .__/  |  |  \ /~~\ | \__> |  |  |
+//         __        ___     ___  __          __       ___
+//   |\/| /  \ \  / |__       |  |__)  /\  | / _` |__|  |
+//   |  | \__/  \/  |___      |  |  \ /~~\ | \__> |  |  |
 //
 
 //if robot is not straight by the end of loop, it will become the new heanding angle
 //gyro did not take into account when the sensor value overflow
 void moveStraight(int direction, float tiles){
-	targetTicks = tiles*ticks_per_tile;
+	targetTicks = (tiles*ticks_per_tile) - prevError;
 
 	if (tiles == 1){
 		setTime = 2000;
-		kP_drive = 2;
+		kP_drive = 2;//2
 		kD = 15.7;
 		kI = 0.36; //0.36
 		if (direction == 1 || direction == 2){
 			targetTicks = tiles*(ticks_per_tile - 65);
 		}
 		if (direction == -1){
-			targetTicks = tiles*(ticks_per_tile - 85;
+			targetTicks = tiles*(ticks_per_tile - 85);
 		}
 	}
 
-	if (tiles == 2){
-		setTime = 3000;
+	if (tiles == 2 || tiles == 3){
+		setTime = 4000;
 		kP_drive = 2; //2
 		kD = 15.7; //16
-		kI = 0.36; //0.8
+		kI = 0.36; //0.8, 0.36
 		if (direction == 1){
-			targetTicks = tiles*(ticks_per_tile - 65); //50
+			targetTicks = tiles*(ticks_per_tile - 60); //50, 65
 		}
 		if (direction == -1){
-			targetTicks = tiles*(ticks_per_tile - 85); //45
+			targetTicks = tiles*(ticks_per_tile - 57); //45
 		}
 	}
 	prevError = targetTicks;
@@ -205,7 +205,7 @@ void moveStraight(int direction, float tiles){
 			driftPower = -30;
 		}
 
-		if(abs(error)<30){
+		if(abs(error)<10){
 			driftPower = 0;
 		}
 
@@ -221,6 +221,85 @@ void moveStraight(int direction, float tiles){
 }
 
 
+//   ___       __
+//    |  |  | |__)|\ |
+//    |  \__/ |  \| \|
+//
+
+// + counter clockwise
+// - clockwise
+// angle in degree
+float turn_kP = 3; //1, 3
+float turn_kI = 0.7; //0.3
+float turn_kD = 16.7; //15
+float turnError;
+float turn_Power;
+float turn_Integral = 0;
+float turn_Derivative = 0;
+float turn_Proportional = 0;
+float current_Angle;
+float angle;
+void turn( int direction, float angle){
+	float turn_LastError = 0;
+	turn_Integral = 0;
+	turn_Derivative = 0;
+	turn_Proportional = 0;
+
+	float turn_scale;
+
+	setTime = 2000;
+	headingAngle = headingAngle + (direction * angle);
+	clearTimer(T1);
+
+	while ((time1[T1]<setTime)){
+		turn_scale = 127/angle;
+		if (angle > 90){
+			turn_scale = (127/90);
+		}
+		current_Angle = SensorValue[gyro]/10;
+		turnError = headingAngle - current_Angle; // + turn left, - turn right
+	 	turn_Proportional = turnError;
+	 	turn_Derivative = turnError - turn_LastError;
+
+	 	if (abs(turnError) < 10){ // active when error is less than 10 degree
+	  	turn_Integral = turn_Integral + turnError;
+		}
+		else {
+			turn_Integral = 0;
+		}
+
+		turn_Power = ((turn_kP * turn_Proportional) + (turn_kI * turn_Integral) + (turn_kD * turn_Derivative)) * turn_scale;
+
+		if (turn_Power > 127){
+			turn_Power = 127;
+		}
+		if (turn_Power < -127){
+			turn_Power = -127;
+		}
+		motor [LEDrive] = -turn_Power;
+		motor [REDrive] = turn_Power;
+		turn_LastError = turnError;
+		wait1Msec(25);
+	}
+}
+
+
+//        __
+//   /\  |__) |\/|
+//  /~~\ |  \ |  |
+//
+
+float armTarget = -600;
+float armError;
+
+task arm(){
+	while (true){
+		armError = armTarget - nMotorEncoder[clawArm]; //negative means go down, starting position is up = 0
+		motor[clawArm]= -1*armError*(127/(armTarget));
+		wait1Msec(15);
+	}
+}
+
 //   __       ___            __   __
 //  |  \  /\   |   /\  |    /  \ / _`
 //  |__/ /~~\  |  /~~\ |___ \__/ \__>
@@ -229,14 +308,14 @@ void moveStraight(int direction, float tiles){
 task datalog(){
 	while(1){
 		datalogDataGroupStart();
-		datalogAddValue( 0, error);
-		datalogAddValue( 1, gyroError);
-		datalogAddValue( 2, driftPower);
-		datalogAddValue( 3, toMotor);
-		datalogAddValue( 4, powerP);
-		datalogAddValue( 5, powerI);
-		datalogAddValue( 6, powerD);
-		datalogAddValue( 7, tempMotor);
+		datalogAddValue( 0, turnError);
+		datalogAddValue( 1, turn_Power);
+		datalogAddValue( 2, headingAngle);
+		datalogAddValue( 3, turn_Proportional);
+		datalogAddValue( 4, turn_Integral);
+		datalogAddValue( 5, turn_Derivative);
+		datalogAddValue( 6, current_Angle);
+		datalogAddValue( 7, angle);
 		datalogDataGroupEnd();
 		wait1Msec(25);
 	}
@@ -251,22 +330,12 @@ task autonomous()
 {
 	startTask(slewRate);
 	startTask(datalog);
-	moveStraight(1,1);
+
+	turn(1, 180);
 	wait1Msec(500);
-	moveStraight(1,1);
+	turn(-1, 90);
 	wait1Msec(500);
-	moveStraight(-1,1);
-	wait1Msec(500);
-	moveStraight(-1,1);
-	wait1Msec(500);
-	moveStraight(1,2);
-	wait1Msec(500);
-	moveStraight(-1,2);
-	wait1Msec(500);
-	moveStraight(1,1);
-	wait1Msec(500);
-	moveStraight(-1,1);
-	wait1Msec(500);
+
 	stopTask(slewRate);
 	stopTask(datalog);
 }
