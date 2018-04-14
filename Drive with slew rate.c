@@ -291,14 +291,71 @@ void turn( int direction, float angle){
 
 float armTarget = -600;
 float armError;
-
+float arm_kP = 1;
 task arm(){
 	while (true){
 		armError = armTarget - nMotorEncoder[clawArm]; //negative means go down, starting position is up = 0
-		motor[clawArm]= -1*armError*(127/(armTarget));
+		motor[clawArm]= -1 * arm_kP * armError * (127/(armTarget));
 		wait1Msec(15);
 	}
 }
+
+
+
+//         __ ___
+// |    | |__  |
+// |___ | |    |
+//
+
+
+float lift_kP = 3; //1, 3
+float lift_kI = 0; //0.3
+float lift_kD = 0; //15
+float lift_Error;
+float lift_Power;
+float lift_Integral = 0;
+float lift_Derivative = 0;
+float lift_Proportional = 0;
+float lift_Target = 0;
+float current_EncoderValue = 0;
+float lift_MaxRange = 570;
+float lift_MinRange = 50;
+task lift(){
+	float lift_LastError = 0;
+	lift_Integral = 0;
+	lift_Derivative = 0;
+	lift_Proportional = 0;
+
+	float lift_scale;
+
+	while (true){
+		lift_scale = 127/abs(lift_Target + 1);
+		current_EncoderValue = (abs(nMotorEncoder[L_lift]) + abs(nMotorEncoder[R_lift])) / 2;
+		lift_Error = lift_Target - current_EncoderValue; // + turn left, - turn right
+	 	lift_Proportional = lift_Error;
+	 	lift_Derivative = lift_Error - lift_LastError;
+
+	 	if (abs(lift_Error) < 45){
+	  	lift_Integral = lift_Integral + lift_Error;
+		}
+		else {
+			lift_Integral = 0;
+		}
+
+		lift_Power = ((lift_kP * lift_Proportional) + (lift_kI * lift_Integral) + (lift_kD * lift_Derivative)) * lift_scale;
+
+		if (lift_Power > 127){
+			lift_Power = 127;
+		}
+		if (lift_Power < -127){
+			lift_Power = -127;
+		}
+		motor [L_lift] = lift_Power;
+		lift_LastError = lift_Error;
+		wait1Msec(25);
+	}
+}
+
 
 //   __       ___            __   __
 //  |  \  /\   |   /\  |    /  \ / _`
@@ -308,14 +365,12 @@ task arm(){
 task datalog(){
 	while(1){
 		datalogDataGroupStart();
-		datalogAddValue( 0, turnError);
-		datalogAddValue( 1, turn_Power);
-		datalogAddValue( 2, headingAngle);
-		datalogAddValue( 3, turn_Proportional);
-		datalogAddValue( 4, turn_Integral);
-		datalogAddValue( 5, turn_Derivative);
-		datalogAddValue( 6, current_Angle);
-		datalogAddValue( 7, angle);
+		datalogAddValue( 0, lift_Error);
+		datalogAddValue( 1, lift_Power);
+		datalogAddValue( 3, lift_Proportional);
+		datalogAddValue( 4, lift_Integral);
+		datalogAddValue( 5, lift_Derivative);
+		datalogAddValue( 6, current_EncoderValue);
 		datalogDataGroupEnd();
 		wait1Msec(25);
 	}
@@ -330,14 +385,17 @@ task autonomous()
 {
 	startTask(slewRate);
 	startTask(datalog);
+	startTask(lift);
 
-	turn(1, 180);
-	wait1Msec(500);
-	turn(-1, 90);
-	wait1Msec(500);
+	lift_Target = lift_MaxRange;
+	wait1Msec(5000);
+
+	lift_Target = lift_MinRange;
+	wait1Msec(5000);
 
 	stopTask(slewRate);
 	stopTask(datalog);
+	stopTask(lift);
 }
 
 
