@@ -78,13 +78,7 @@ void pre_auton()
 /*---------------------------------------------------------------------------*/
 
 task coneArm(){
-	while(getMotorEncoder(clawArm)>target){
-		motor[clawArm]=-50;
-	}
-	while(getMotorEncoder(clawArm)<target){
-		motor[clawArm]=50;
-	}
-	motor[clawArm]=0;
+
 }
 
 
@@ -113,6 +107,10 @@ task coneLift(){
 				ticks=400;
 				break;
 			default:
+				if(ticks==400){
+					ticks=200;
+					wait1Msec(500);
+				}
 				ticks=0;
 				break;
 		}
@@ -169,8 +167,6 @@ task autonomous()
 	wait1Msec(2000);
 	counter=5;
 	wait1Msec(2000);
-	counter=1;
-	wait1Msec(500);
 	counter=0;
 
 }
