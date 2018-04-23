@@ -7,6 +7,7 @@
 #pragma config(Sensor, I2C_4,  ,               sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Sensor, I2C_5,  ,               sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Motor,  port2,           LEDrive,       tmotorVex393HighSpeed_MC29, openLoop, reversed, encoderPort, I2C_1)
+#pragma config(Motor,  port3,           clawArm2,      tmotorVex393HighSpeed_MC29, openLoop, reversed)
 #pragma config(Motor,  port4,           fork,          tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port5,           L_lift,        tmotorVex393HighSpeed_MC29, openLoop, encoderPort, I2C_3)
 #pragma config(Motor,  port6,           R_lift,        tmotorVex393HighSpeed_MC29, openLoop, reversed, encoderPort, I2C_4)
@@ -43,7 +44,7 @@
 const float kP=2;
 const float kI=0;
 const float kD=2;
-int counter=0;
+int height=0;
 int target=0;
 int lifterror;
 int liftpower;
@@ -53,6 +54,7 @@ int integral1;
 void pre_auton()
 {
 	slaveMotor(L_lift,R_lift);
+	slaveMotor(clawArm2,clawArm);
   // Set bStopTasksBetweenModes to false if you want to keep user created tasks
   // running between Autonomous and Driver controlled modes. You will need to
   // manage all user created tasks if set to false.
@@ -92,7 +94,7 @@ task coneLift(){
 	while(1){
 		prevError=0;
 		derivative=0;
-		switch(counter){
+		switch(height){
 			case 1:
 			case 2:
 			case 3:
@@ -136,6 +138,27 @@ task coneLift(){
 	}
 }
 
+float armPower;
+float armTarget;
+float arm_kP = 1;
+float arm_kD = 3;
+
+task arm(){
+	float armError;
+	float armPrevError=0;
+	float armD;
+	while (true){
+		while((getMotorEncoder(clawArm)<armTarget)||(getMotorEncoder(clawArm)>armTarget)){
+			armError = armTarget - getMotorEncoder(clawArm); //negative means go down, starting position is up = 0
+			armD=armError-armPrevError;
+			armPrevError=armError;
+			motor[clawArm]= arm_kP * armError + arm_kD * armD;
+			armPower=arm_kP * armError + arm_kD * armD;
+			wait1Msec(15);
+		}
+	}
+}
+
 task datalog(){
 	while(1){
 		datalogDataGroupStart();
@@ -146,6 +169,7 @@ task datalog(){
 		datalogAddValue( 4, motor[LEDrive]);
 		datalogAddValue( 5, motor[REDrive]);
 		datalogAddValue( 6, getMotorEncoder(R_lift));
+		datalogAddValue( 7, armPower);
 		datalogDataGroupEnd();
 		wait1Msec(25);
 	}
@@ -162,12 +186,21 @@ task autonomous()
   // Remove this function call once you have "real" code.
 	//startTask(coneArm);
 	startTask(coneLift);
+	startTask(arm);
 	startTask(datalog);
-	counter=1;
-	wait1Msec(2000);
-	counter=5;
-	wait1Msec(2000);
-	counter=0;
+	height=1;
+	wait1Msec(1000);
+	armTarget=130;
+	wait1Msec(500);
+	height=0;
+	wait1Msec(500);
+	height=1;
+	wait1Msec(500);
+	armTarget=0;
+	//wait1Msec(2000);
+	//height=5;
+	//wait1Msec(2000);
+	//height=0;
 
 }
 
