@@ -44,7 +44,7 @@
 const float kP=2;
 const float kI=0;
 const float kD=2;
-int height=0;
+int height=0; //height preset for auton: 1 for preload height, 2 for cones 1-4 drop height, 3 for cones 5-8/9 drop height
 int target=0;
 int lifterror;
 int liftpower;
@@ -96,16 +96,12 @@ task coneLift(){
 		derivative=0;
 		switch(height){
 			case 1:
+				ticks=150:
+				break;
 			case 2:
-			case 3:
-			case 4:
 				ticks=200;
 				break;
-			case 5:
-			case 6:
-			case 7:
-			case 8:
-			case 9:
+			case 3:
 				ticks=400;
 				break;
 			default:
