@@ -79,11 +79,6 @@ void pre_auton()
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-task coneArm(){
-
-}
-
-
 task coneLift(){
 	int error;
 	int prevError;
@@ -134,6 +129,17 @@ task coneLift(){
 	}
 }
 
+bool openClaw=false;
+task do_claw(){
+	if(openClaw){
+		motor[claw]=127;
+		wait1Msec(100);
+		motor[claw]=0;
+		openClaw=false;
+	}
+}
+	
+
 float armPower;
 float armTarget;
 float arm_kP = 1;
@@ -171,7 +177,44 @@ task datalog(){
 	}
 }
 
-
+int counter=0;
+bool floor=false;
+bool preload=false;
+task grabCone(){
+	if(floor){
+		armTarget=130;
+		wait1Msec(500);
+		height=0;
+		wait1Msec(500);
+		if(counter<4){
+			height=2;
+		}
+		else{
+			height=3;
+		}
+		wait1Msec(500);
+		armTarget=0;
+		openClaw=true;
+		counter+=1;
+		floor=false;
+	}
+	if(preload){
+		armTarget=130;
+		wait1Msec(500);
+		height=1;
+		wait1Msec(500);
+		if(counter<4){
+			height=2;
+			wait1Msec(500);
+		}
+		else{
+			height=3;
+			wait1Msec(750);
+		}
+		armTarget=0;
+		openClaw=true;
+		counter+=1;
+		preload=false;
 
 task autonomous()
 {
@@ -180,24 +223,13 @@ task autonomous()
   // ..........................................................................
 
   // Remove this function call once you have "real" code.
-	//startTask(coneArm);
 	startTask(coneLift);
 	startTask(arm);
+	startTask(do_claw);
+	startTask(grabCone);
 	startTask(datalog);
-	height=1;
-	wait1Msec(1000);
-	armTarget=130;
-	wait1Msec(500);
-	height=0;
-	wait1Msec(500);
-	height=1;
-	wait1Msec(500);
-	armTarget=0;
-	//wait1Msec(2000);
-	//height=5;
-	//wait1Msec(2000);
-	//height=0;
-
+	//to grab cones, use set "floor" or "preload" equal to true
+	
 }
 
 /*---------------------------------------------------------------------------*/
