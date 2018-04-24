@@ -235,6 +235,6 @@ task usercontrol()
 		motor[clawArm] = (vexRT[Btn6UXmtr2]-vexRT[Btn5UXmtr2])*127;
 		motor[claw] = vexRT[Btn7DXmtr2]*127;
 		motor[fork] = (vexRT[Btn6U]-vexRT[Btn6D])*127;
-		motor[L_lift] = (vexRT[Btn8RXmtr2]-vexRT[Btn8DXmtr2])*127;
+		motor[L_lift] = (vexRT[Btn8DXmtr2]-vexRT[Btn8RXmtr2])*127;
 	}
 }
