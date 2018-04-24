@@ -91,7 +91,7 @@ task coneLift(){
 		derivative=0;
 		switch(height){
 			case 1:
-				ticks=150:
+				ticks=150;
 				break;
 			case 2:
 				ticks=200;
@@ -138,7 +138,7 @@ task do_claw(){
 		openClaw=false;
 	}
 }
-	
+
 
 float armPower;
 float armTarget;
@@ -178,10 +178,10 @@ task datalog(){
 }
 
 int counter=0;
-bool floor=false;
+bool floor1 = false;
 bool preload=false;
 task grabCone(){
-	if(floor){
+	if(floor1){
 		armTarget=130;
 		wait1Msec(500);
 		height=0;
@@ -196,7 +196,7 @@ task grabCone(){
 		armTarget=0;
 		openClaw=true;
 		counter+=1;
-		floor=false;
+		floor1=false;
 	}
 	if(preload){
 		armTarget=130;
@@ -215,6 +215,8 @@ task grabCone(){
 		openClaw=true;
 		counter+=1;
 		preload=false;
+	}
+}
 
 task autonomous()
 {
@@ -228,8 +230,8 @@ task autonomous()
 	startTask(do_claw);
 	startTask(grabCone);
 	startTask(datalog);
-	//to grab cones, use set "floor" or "preload" equal to true
-	
+	//to grab cones, use set "floor1" or "preload" equal to true
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -248,16 +250,8 @@ task usercontrol()
 
   while (true)
   {
-    // This is the main execution loop for the user control program.
-    // Each time through the loop your program should update motor + servo
-    // values based on feedback from the joysticks.
-
-    // ........................................................................
-    // Insert user code here. This is where you use the joystick values to
-    // update your motors, etc.
-    // ........................................................................
-
-    // Remove this function call once you have "real" code.
+    motor[port9]=vexRT[Ch3];
+    motor[port3]=vexRT[Ch2];
     UserControlCodePlaceholderForTesting();
   }
 }
