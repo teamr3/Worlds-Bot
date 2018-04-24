@@ -7,7 +7,7 @@
 #pragma config(Sensor, I2C_4,  ,               sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Sensor, I2C_5,  ,               sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Motor,  port2,           LEDrive,       tmotorVex393HighSpeed_MC29, openLoop, reversed, encoderPort, I2C_1)
-#pragma config(Motor,  port3,            ,             tmotorVex393HighSpeed_MC29, openLoop)
+#pragma config(Motor,  port3,           clawArm2,      tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port4,           fork,          tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port5,           L_lift,        tmotorVex393HighSpeed_MC29, openLoop, encoderPort, I2C_3)
 #pragma config(Motor,  port6,           R_lift,        tmotorVex393HighSpeed_MC29, openLoop, reversed, encoderPort, I2C_4)
@@ -289,14 +289,16 @@ void turn( int direction, float angle){
 //  /~~\ |  \ |  |
 //
 
-float armTarget = -600;
-float armError;
+float armTarget = 80;
 float arm_kP = 1;
 task arm(){
+	float armError;
 	while (true){
-		armError = armTarget - nMotorEncoder[clawArm]; //negative means go down, starting position is up = 0
-		motor[clawArm]= -1 * arm_kP * armError * (127/(armTarget));
-		wait1Msec(15);
+		while((getMotorEncoder(clawArm)<armTarget)||(getMotorEncoder(clawArm)>armTarget)){
+			armError = armTarget - getMotorEncoder(clawArm); //negative means go down, starting position is up = 0
+			motor[clawArm]= arm_kP * armError + ;
+			wait1Msec(15);
+		}
 	}
 }
 
@@ -383,19 +385,7 @@ task datalog(){
 
 task autonomous()
 {
-	startTask(slewRate);
-	startTask(datalog);
-	startTask(lift);
-
-	lift_Target = lift_MaxRange;
-	wait1Msec(5000);
-
-	lift_Target = lift_MinRange;
-	wait1Msec(5000);
-
-	stopTask(slewRate);
-	stopTask(datalog);
-	stopTask(lift);
+	startTask(arm);
 }
 
 
@@ -407,6 +397,7 @@ task autonomous()
 
 task usercontrol()
 {
+	slaveMotor(clawArm2, clawArm);
 	int driveThreshold = 20;
 	while (true){
 		if(abs(vexRT[Ch3])>driveThreshold){
@@ -422,6 +413,6 @@ task usercontrol()
 		motor[clawArm] = (vexRT[Btn6UXmtr2]-vexRT[Btn5UXmtr2])*127;
 		motor[claw] = vexRT[Btn7DXmtr2]*127;
 		motor[fork] = (vexRT[Btn6U]-vexRT[Btn6D])*127;
-		motor[L_lift] = (vexRT[Btn8DXmtr2]-vexRT[Btn8RXmtr2])*127;
+		motor[L_lift] = (vexRT[Btn8RXmtr2]-vexRT[Btn8DXmtr2])*127;
 	}
 }
